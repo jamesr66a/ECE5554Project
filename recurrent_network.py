@@ -135,7 +135,7 @@ with tf.Session() as sess:
     print("Optimization Finished!")
 
     # Calculate accuracy for 128 mnist test images
-    test_d = unpickle('cifar-10-batches-py/data_batch_1')
+    test_d = unpickle('cifar-10-batches-py/test_batch')
     test_data = d['data']
     test_ls = np.array(d['labels'])
     test_data = np.linalg.norm(test_data.reshape((-1, 3, 1024)), axis=1)\
