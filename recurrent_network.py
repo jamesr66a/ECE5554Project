@@ -38,11 +38,12 @@ learning_rate = 0.001
 training_iters = 1000000
 batch_size = 1024
 display_step = 10
+lstm_depth = 5
 
 # Network Parameters
 n_input = 32 # MNIST data input (img shape: 28*28)
 n_steps = 32 # timesteps
-n_hidden = 512 # hidden layer num of features
+n_hidden = 128 # hidden layer num of features
 n_classes = 10 # MNIST total classes (0-9 digits)
 
 # tf Graph input
@@ -72,12 +73,15 @@ def RNN(x, weights, biases):
     x = tf.split(0, n_steps, x)
 
     states = x
-    for i in xrange(5):
+    for i in xrange(lstm_depth):
       # Define a lstm cell with tensorflow
       lstm_cell = rnn_cell.BasicLSTMCell(n_hidden, forget_bias=1.0)
 
       # Get lstm cell output
-      outputs, states_t = rnn.rnn(lstm_cell, states, dtype=tf.float32, scope='rnn{}'.format(i))
+      outputs, states_t = rnn.rnn(
+        lstm_cell, states, dtype=tf.float32, scope='rnn{}'.format(i)
+      )
+
       if i != 0:
         states = states_t + states
       else:
@@ -117,7 +121,6 @@ with tf.Session() as sess:
           batch_y[idx, ls[idx]] = 1.
         # Reshape data to get 28 seq of 28 elements
         batch_x = batch_x.reshape((batch_size, n_steps, n_input))
-        #batch_x = batch_x + np.random.randn(batch_size, n_steps, n_input) * 0.5 + 0.5
         # Run optimization op (backprop)
         sess.run(optimizer, feed_dict={x: batch_x, y: batch_y})
         if step % display_step == 0:
@@ -141,26 +144,32 @@ with tf.Session() as sess:
     test_labels = np.zeros((nex, n_classes))
     for idx in xrange(nex):
       test_labels[idx, test_ls[idx]] = 1.
-    #test_len = 128
-    #test_data = mnist.test.images[:test_len].reshape((-1, n_steps, n_input))
-    #test_label = mnist.test.labels[:test_len]
     print("Testing Accuracy:", \
         sess.run(accuracy, feed_dict={x: test_data, y: test_labels}))
 
-    imtest = np.tile(np.zeros((32, 32)), 10).reshape((10, 32, 32))
+    #imtest_template = np.random.randn(32, 32)
+    imtest_template = test_data[0, :, :]
+    imtest = np.zeros((10, 32, 32))
+    for idx in xrange(10):
+      imtest[idx, :, :] = imtest_template
     labeltest = np.identity(10)
 
-    for idx in xrange(5):
+    while True:
       var_grad = tf.gradients(cost, [x])[0]
       imgrad = sess.run(var_grad, feed_dict={x: imtest, y: labeltest})
       loss = sess.run(cost, feed_dict={x: imtest, y: labeltest})
 
-      adjusted = imtest - 10*imgrad
-      print('loss', loss, 'delta', np.linalg.norm(adjusted[0,:,:] - imtest[0,:,:]))
+      adjusted = imtest - 100*imgrad
+      print(
+        'loss', loss, 'delta', np.linalg.norm(adjusted[0,:,:] - imtest[0,:,:])
+      )
       imtest = adjusted
+
+      if loss < 1:
+        break
 
     for num in range(10):
       scipy.misc.imsave(
-        'out/adjusted{}_{}.jpg'.format(num, idx),
-        np.reshape(adjusted[num,:,:], (32, 32)).repeat(2, axis=0).repeat(2, axis=1)
+        'out/adjusted{}.jpg'.format(num),
+        np.squeeze(imtest[num,:,:]).repeat(2, axis=0).repeat(2, axis=1)
       )
