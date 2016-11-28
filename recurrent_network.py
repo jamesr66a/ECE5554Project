@@ -63,11 +63,13 @@ def RNN(x, weights, biases):
     # Split to get a list of 'n_steps' tensors of shape (batch_size, n_input)
     x = tf.split(0, n_steps, x)
 
-    # Define a lstm cell with tensorflow
-    lstm_cell = rnn_cell.BasicLSTMCell(n_hidden, forget_bias=1.0)
+    states = x
+    for i in xrange(5):
+      # Define a lstm cell with tensorflow
+      lstm_cell = rnn_cell.BasicLSTMCell(n_hidden, forget_bias=1.0)
 
-    # Get lstm cell output
-    outputs, states = rnn.rnn(lstm_cell, x, dtype=tf.float32)
+      # Get lstm cell output
+      outputs, states = rnn.rnn(lstm_cell, states, dtype=tf.float32, scope='rnn{}'.format(i))
 
     # Linear activation, using rnn inner loop last output
     return tf.matmul(outputs[-1], weights['out']) + biases['out']
@@ -117,7 +119,7 @@ with tf.Session() as sess:
     imtest = np.expand_dims(test_data[1, :, :], 0)
     scipy.misc.imsave('out/base.jpg', imtest[0,:,:])
     labeltest = np.zeros((1, 10))
-    labeltest[0, 3] = 1.
+    labeltest[0, 0] = 1.
     #labeltest = np.expand_dims(test_label[0], 0)
     print(labeltest, labeltest.shape)
 
@@ -127,7 +129,7 @@ with tf.Session() as sess:
       loss = sess.run(cost, feed_dict={x: imtest, y: labeltest})
 
       adjusted = imtest - 10*imgrad
-      scipy.misc.imsave('out/adjusted{}.jpg'.format(idx), adjusted[0,:,:])
+      scipy.misc.imsave('out/adjusted{}.jpg'.format(idx), adjusted[0,:,:].repeat(2, axis=0).repeat(2, axis=1))
 
       print('loss', loss, 'delta', np.linalg.norm(adjusted[0,:,:] - imtest[0,:,:]))
       imtest = adjusted
