@@ -9,6 +9,9 @@ Project: https://github.com/aymericdamien/TensorFlow-Examples/
 
 from __future__ import print_function
 
+import numpy as np
+import scipy.misc
+
 import tensorflow as tf
 from tensorflow.python.ops import rnn, rnn_cell
 
@@ -110,3 +113,21 @@ with tf.Session() as sess:
     test_label = mnist.test.labels[:test_len]
     print("Testing Accuracy:", \
         sess.run(accuracy, feed_dict={x: test_data, y: test_label}))
+
+    imtest = np.expand_dims(test_data[1, :, :], 0)
+    scipy.misc.imsave('out/base.jpg', imtest[0,:,:])
+    labeltest = np.zeros((1, 10))
+    labeltest[0, 3] = 1.
+    #labeltest = np.expand_dims(test_label[0], 0)
+    print(labeltest, labeltest.shape)
+
+    for idx in xrange(10):
+      var_grad = tf.gradients(cost, [x])[0]
+      imgrad = sess.run(var_grad, feed_dict={x: imtest, y: labeltest})
+      loss = sess.run(cost, feed_dict={x: imtest, y: labeltest})
+
+      adjusted = imtest - 10*imgrad
+      scipy.misc.imsave('out/adjusted{}.jpg'.format(idx), adjusted[0,:,:])
+
+      print('loss', loss, 'delta', np.linalg.norm(adjusted[0,:,:] - imtest[0,:,:]))
+      imtest = adjusted
