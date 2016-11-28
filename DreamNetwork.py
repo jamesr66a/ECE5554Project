@@ -93,7 +93,7 @@ class DreamNetwork:
         step += 1
     print("Optimization complete!")
    
-  def dream(self, x, y, training_iters=10000, display_step=10):
+  def dream(self, x, y, training_iters=10000, display_step=10,learning_rate=.1):
     with tf.Session() as sess:
       x = np.reshape(x, (-1, self.n_steps, self.n_input))
       print(x.shape)
@@ -101,11 +101,11 @@ class DreamNetwork:
       ys = tf.placeholder('float32', [None, self.n_classes])
 
       pred = self.init_network(xs)
-      print(pred.get_shape())
 
       cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(pred, ys))
-      optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate)\
-        .minimize(cost, var_list=[xs])
+      optimizer = tf.train.FtrlOptimizer(
+        learning_rate=learning_rate, l2_regularization_strength=1.0
+      ).minimize(cost, var_list=[xs])
 
       correct_pred = tf.equal(tf.argmax(pred, 1), tf.argmax(ys, 1))
       accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
@@ -129,3 +129,24 @@ class DreamNetwork:
         step += 1
       print("Optimization complete!")
       return sess.run(xs) 
+
+  def test(self, x, y):
+    with tf.Session() as sess:
+      x = np.reshape(x, (-1, self.n_steps, self.n_input))
+      xs = tf.placeholder('float32', [None, self.n_steps, self.n_input])
+      ys = tf.placeholder('float32', [None, self.n_classes])
+      nex, _, _ = x.shape
+      labels = np.zeros((nex, 10))
+      for idx in xrange(nex):
+        labels[idx, y[idx]] = 1.
+
+      pred = self.init_network(xs)
+
+      correct_pred = tf.equal(tf.argmax(pred, 1), tf.argmax(ys, 1))
+      accuracy = tf.reduce_mean(tf.abs(tf.cast(correct_pred, tf.float32)))
+
+      init = tf.initialize_all_variables()
+      sess.run(init)
+
+      print("Testing Accuracy:", \
+        sess.run(accuracy, feed_dict={xs: x, ys: labels})) 
