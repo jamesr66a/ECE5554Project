@@ -39,9 +39,6 @@ class DreamNetwork:
       else:
         states = states_t
 
-    print('outputsneg1', outputs[-1].get_shape())
-    print('weights', weights['out'].get_shape())
-    print('biases', biases['out'].get_shape())
     return tf.add(tf.matmul(outputs[-1], weights['out']), biases['out'])
 
   def init_network(self, x):
@@ -96,7 +93,7 @@ class DreamNetwork:
         step += 1
     print("Optimization complete!")
    
-  def dream(self, x, y, training_iters=100, display_step=10):
+  def dream(self, x, y, training_iters=10000, display_step=10):
     with tf.Session() as sess:
       x = np.reshape(x, (-1, self.n_steps, self.n_input))
       print(x.shape)
