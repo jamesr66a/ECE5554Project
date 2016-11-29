@@ -31,7 +31,7 @@ def main():
 
     dream_img = dn.dream(
       np.expand_dims(test_data[0, :], 0), [0],
-      sess, learning_rate=1e2, training_iters=100
+      sess, learning_rate=5e3, training_iters=100
     ) 
 
     scipy.misc.imsave(
