@@ -28,16 +28,16 @@ class DreamNetwork:
       with tf.variable_scope('rnn{}'.format(i), reuse=reuse):
         lstm_cell = rnn_cell.BasicLSTMCell(self.n_hidden, forget_bias=1.0)
         outputs, states_t = rnn.rnn(
-          lstm_cell, states, dtype=tf.float32
+          lstm_cell, states, dtype=tf.float32, scope='rnn{}'.format(i)
         ) 
 
-      # Residual connection
-      if i != 0:
-        states = states_t + states
-      else:
-        states = states_t
+        # Residual connection
+        if i != 0:
+          states = states_t + states
+        else:
+          states = states_t
 
-    return tf.add(tf.matmul(outputs[-1], weights['out']), biases['out'])
+        return tf.add(tf.matmul(outputs[-1], weights['out']), biases['out'])
 
   def init_network(self, x, reuse=False):
     with tf.variable_scope('params', reuse=reuse) as scope:
@@ -54,106 +54,100 @@ class DreamNetwork:
 
     pred = self.RNN(x, weights, biases, reuse)
 
-    return pred
+    return pred, weights, biases
 
 
-  def train(self, x, y, batch_size=100, training_iters=100000, display_step=10):
-    with tf.Session() as sess:
-      xs = tf.placeholder('float32', [None, self.n_steps, self.n_input])
-      ys = tf.placeholder('float32', [None, self.n_classes])
+  def train(self, x, y, sess, batch_size=100, training_iters=10000000, display_step=10):
+    xs = tf.placeholder('float32', [None, self.n_steps, self.n_input])
+    ys = tf.placeholder('float32', [None, self.n_classes])
 
-      pred = self.init_network(xs)
+    pred, weights, biases = self.init_network(xs)
 
-      cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(pred, ys))
-      optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate)\
-        .minimize(cost)
+    cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(pred, ys))
+    optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate)\
+      .minimize(cost)
 
-      correct_pred = tf.equal(tf.argmax(pred, 1), tf.argmax(ys, 1))
-      accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
+    correct_pred = tf.equal(tf.argmax(pred, 1), tf.argmax(ys, 1))
+    accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
 
-      init = tf.initialize_all_variables()
-      sess.run(init)
+    init = tf.initialize_all_variables()
+    sess.run(init)
 
-      step = 1
-      while step*batch_size < training_iters:
-        data_size, _ = x.shape
-        idxs = np.random.choice(data_size, batch_size)
-        batch_x = x[idxs, :]
-        ls = y[idxs]
-        batch_y = np.zeros((batch_size, self.n_classes))
-        for idx in xrange(batch_size):
-          batch_y[idx, ls[idx]] = 1.
-        batch_x = batch_x.reshape((batch_size, self.n_steps, self.n_input))
-        sess.run(optimizer, feed_dict={xs: batch_x, ys: batch_y})
-        if step % display_step == 0:
-          acc = sess.run(accuracy, feed_dict={xs: batch_x, ys: batch_y})
-          loss = sess.run(cost, feed_dict={xs: batch_x, ys: batch_y})
-          print("Iter " + str(step*batch_size) + ", Minibatch Loss= " + \
-                "{:.6f}".format(loss) + ", Training Accuracy= " + \
-                "{:.5f}".format(acc))
-        step += 1
-      print("Optimization complete!")
-      x_z = np.zeros((1, 32, 32))
-      print(sess.run(pred, feed_dict={xs: x_z}))
-   
-  def dream(self, x, y, training_iters=10000, display_step=10,learning_rate=.1):
-    with tf.Session() as sess:
-      x = np.reshape(x, (-1, self.n_steps, self.n_input))
-      print(x.shape)
-      xs = tf.Variable(x, dtype=np.float32)
-      ys = tf.placeholder('float32', [None, self.n_classes])
+    step = 1
+    while step*batch_size < training_iters:
+      data_size, _ = x.shape
+      idxs = np.random.choice(data_size, batch_size)
+      batch_x = x[idxs, :]
+      ls = y[idxs]
+      batch_y = np.zeros((batch_size, self.n_classes))
+      for idx in xrange(batch_size):
+        batch_y[idx, ls[idx]] = 1.
+      batch_x = batch_x.reshape((batch_size, self.n_steps, self.n_input))
+      sess.run(optimizer, feed_dict={xs: batch_x, ys: batch_y})
+      if step % display_step == 0:
+        acc = sess.run(accuracy, feed_dict={xs: batch_x, ys: batch_y})
+        loss = sess.run(cost, feed_dict={xs: batch_x, ys: batch_y})
+        print("Iter " + str(step*batch_size) + ", Minibatch Loss= " + \
+              "{:.6f}".format(loss) + ", Training Accuracy= " + \
+              "{:.5f}".format(acc))
+      step += 1
+    print("Optimization complete!")
 
-      pred = self.init_network(xs, reuse=True)
-
-      cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(pred, ys))
-      optimizer = tf.train.FtrlOptimizer(
-        learning_rate=learning_rate, l2_regularization_strength=1.0
-      ).minimize(cost, var_list=[xs])
-
-      correct_pred = tf.equal(tf.argmax(pred, 1), tf.argmax(ys, 1))
-      accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
-
-      init = tf.initialize_all_variables()
-      sess.run(init)
-
-      step = 1
-      while step < training_iters:
-        nex, _, _ = x.shape
-        batch_y = np.zeros((nex, 10))
-        for idx in xrange(nex):
-          batch_y[idx, y[idx]] = 1.
-        sess.run(optimizer, feed_dict={ys: batch_y})
-        if step % display_step == 0:
-          acc = sess.run(accuracy, feed_dict={ys: batch_y})
-          loss = sess.run(cost, feed_dict={ys: batch_y})
-          print("Iter " + str(step) + ", Minibatch Loss= " + \
-                "{:.6f}".format(loss) + ", Training Accuracy= " + \
-                "{:.5f}".format(acc))
-        step += 1
-      print("Optimization complete!")
-      return sess.run(xs) 
-
-  def test(self, x, y):
-    with tf.Session() as sess:
-      x = np.reshape(x, (-1, self.n_steps, self.n_input))
-      xs = tf.placeholder('float32', [None, self.n_steps, self.n_input])
-      ys = tf.placeholder('float32', [None, self.n_classes])
-      nex, _, _ = x.shape
-      labels = np.zeros((nex, 10))
-      for idx in xrange(nex):
-        labels[idx, y[idx]] = 1.
-
-      pred = self.init_network(xs, reuse=True)
-
-      correct_pred = tf.equal(tf.argmax(pred, 1), tf.argmax(ys, 1))
-      accuracy = tf.reduce_mean(tf.abs(tf.cast(correct_pred, tf.float32)))
-
-      init = tf.initialize_all_variables()
-      sess.run(init)
-
-      print("Testing Accuracy:", \
-        sess.run(accuracy, feed_dict={xs: x, ys: labels}))
  
-      x_z = np.zeros((1, 32, 32))
-      print(sess.run(pred, feed_dict={xs: x_z}))
+  def dream(self, x, y, sess, training_iters=1000, display_step=10,learning_rate=.1):
+    x = np.reshape(x, (-1, self.n_steps, self.n_input))
+    xs = tf.Variable(x, dtype=np.float32)
+    ys = tf.placeholder('float32', [None, self.n_classes])
 
+    pred, weights, biases = self.init_network(xs, reuse=True)
+
+    cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(pred, ys))
+
+    optimizer = tf.train.AdamOptimizer(
+      learning_rate=learning_rate
+    ).minimize(cost, var_list=[xs])
+
+    correct_pred = tf.equal(tf.argmax(pred, 1), tf.argmax(ys, 1))
+    accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
+
+    to_init = [xs]
+    for var in tf.all_variables():
+      if not sess.run(tf.is_variable_initialized(var)):
+        to_init.append(var)
+
+    sess.run(tf.initialize_variables(to_init))
+
+    step = 1
+    while step < training_iters:
+      nex, _, _ = x.shape
+      batch_y = np.zeros((nex, 10))
+      for idx in xrange(nex):
+        batch_y[idx, y[idx]] = 1.
+      sess.run(optimizer, feed_dict={ys: batch_y})
+      if step % display_step == 0:
+        acc = sess.run(accuracy, feed_dict={ys: batch_y})
+        loss = sess.run(cost, feed_dict={ys: batch_y})
+        print("Iter " + str(step) + ", Minibatch Loss= " + \
+              "{:.6f}".format(loss) + ", Training Accuracy= " + \
+              "{:.5f}".format(acc))
+      step += 1
+    print("Optimization complete!")
+
+    return sess.run(xs) 
+
+  def test(self, x, y, sess):
+    x = np.reshape(x, (-1, self.n_steps, self.n_input))
+    xs = tf.placeholder('float32', [None, self.n_steps, self.n_input])
+    ys = tf.placeholder('float32', [None, self.n_classes])
+    nex, _, _ = x.shape
+    labels = np.zeros((nex, 10))
+    for idx in xrange(nex):
+      labels[idx, y[idx]] = 1.
+
+    pred, weights, biases = self.init_network(xs, reuse=True)
+
+    correct_pred = tf.equal(tf.argmax(pred, 1), tf.argmax(ys, 1))
+    accuracy = tf.reduce_mean(tf.abs(tf.cast(correct_pred, tf.float32)))
+
+    print("Testing Accuracy:", \
+      sess.run(accuracy, feed_dict={xs: x, ys: labels}))
