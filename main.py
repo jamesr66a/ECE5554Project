@@ -23,9 +23,14 @@ def main():
     test_data, test_labels = load_cifar_data('cifar-10-batches-py/test_batch')
     dn.test(test_data[0:100, :], test_labels[0:100], sess)
 
+    scipy.misc.imsave(
+      'orig.jpg', np.squeeze(np.reshape(test_data[0, :], (32, 32)))\
+        .repeat(2, axis=0).repeat(2, axis=1)
+    )
+
     dream_img = dn.dream(
-      np.expand_dims(test_data[0, :], 0), np.expand_dims(test_labels[0], 0),
-      sess, learning_rate=.1,
+      np.expand_dims(test_data[0, :], 0), [0],
+      sess, learning_rate=1e2, training_iters=100
     ) 
 
     scipy.misc.imsave(

@@ -94,7 +94,7 @@ class DreamNetwork:
     print("Optimization complete!")
 
  
-  def dream(self, x, y, sess, training_iters=1000, display_step=10,learning_rate=.1):
+  def dream(self, x, y, sess, training_iters=1000, display_step=1,learning_rate=.1):
     x = np.reshape(x, (-1, self.n_steps, self.n_input))
     xs = tf.Variable(x, dtype=np.float32)
     ys = tf.placeholder('float32', [None, self.n_classes])
@@ -103,8 +103,8 @@ class DreamNetwork:
 
     cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(pred, ys))
 
-    optimizer = tf.train.FtrlOptimizer(
-      learning_rate=learning_rate, l2_regularization_strength=10.0
+    optimizer = tf.train.GradientDescentOptimizer(
+      learning_rate=learning_rate
     ).minimize(cost, var_list=[xs])
 
     correct_pred = tf.equal(tf.argmax(pred, 1), tf.argmax(ys, 1))
