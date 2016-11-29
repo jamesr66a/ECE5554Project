@@ -17,11 +17,12 @@ def main():
   with tf.Session() as sess:
     dn = DreamNetwork()
 
+    savepath = "./model.ckpt"
     data, labels = load_cifar_data('cifar-10-batches-py/data_batch_1')
-    dn.train(data, labels, sess, training_iters=1000000)
+    dn.train(data, labels, sess, training_iters=1000000, savepath=savepath)
 
     test_data, test_labels = load_cifar_data('cifar-10-batches-py/test_batch')
-    dn.test(test_data[0:100, :], test_labels[0:100], sess)
+    dn.test(test_data, test_labels, sess)
 
     scipy.misc.imsave(
       'orig.jpg', np.squeeze(np.reshape(test_data[0, :], (32, 32)))\

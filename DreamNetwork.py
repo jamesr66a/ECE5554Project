@@ -6,6 +6,8 @@ import scipy.misc
 import tensorflow as tf
 from tensorflow.python.ops import rnn, rnn_cell
 
+import os
+
 class DreamNetwork:
   def __init__(self, learning_rate=0.001, lstm_depth=5, n_input=32, n_steps=32,\
                n_hidden=128, n_classes=10, forget_bias=1.0):
@@ -57,7 +59,7 @@ class DreamNetwork:
     return pred, weights, biases
 
 
-  def train(self, x, y, sess, batch_size=100, training_iters=10000000, display_step=10):
+  def train(self, x, y, sess, batch_size=100, training_iters=10000000, display_step=10, savepath=None): 
     xs = tf.placeholder('float32', [None, self.n_steps, self.n_input])
     ys = tf.placeholder('float32', [None, self.n_classes])
 
@@ -69,6 +71,12 @@ class DreamNetwork:
 
     correct_pred = tf.equal(tf.argmax(pred, 1), tf.argmax(ys, 1))
     accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
+
+    if savepath is not None and os.path.exists(savepath):
+      saver = tf.train.Saver()
+      saver.restore(sess, savepath)
+      print("Model successfully restored from {}".format(savepath))
+      return
 
     init = tf.initialize_all_variables()
     sess.run(init)
@@ -93,6 +101,9 @@ class DreamNetwork:
       step += 1
     print("Optimization complete!")
 
+    saver = tf.train.Saver()
+    saver.save(sess, savepath)
+    print("Model saved to {}".format(savepath))
  
   def dream(self, x, y, sess, training_iters=1000, display_step=1,learning_rate=.1):
     x = np.reshape(x, (-1, self.n_steps, self.n_input))
