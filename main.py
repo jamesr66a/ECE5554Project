@@ -16,7 +16,7 @@ def main():
   dn = DreamNetwork()
 
   data, labels = load_cifar_data('cifar-10-batches-py/data_batch_1')
-  dn.train(data, labels, training_iters=1000000)
+  dn.train(data, labels, training_iters=10000)
 
   test_data, test_labels = load_cifar_data('cifar-10-batches-py/test_batch')
   dn.test(test_data[0:100, :], test_labels[0:100])

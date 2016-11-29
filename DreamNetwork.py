@@ -18,16 +18,14 @@ class DreamNetwork:
 
     self.arch = {}
 
-    self.rnn_inited = False
-
-  def RNN(self, x, weights, biases):
+  def RNN(self, x, weights, biases, reuse):
     x = tf.transpose(x, [1, 0, 2])
     x = tf.reshape(x, [-1, self.n_input])
     x = tf.split(0, self.n_steps, x)
 
     states = x
     for i in range(self.lstm_depth):
-      with tf.variable_scope('rnn{}'.format(i), reuse=self.rnn_inited):
+      with tf.variable_scope('rnn{}'.format(i), reuse=reuse):
         lstm_cell = rnn_cell.BasicLSTMCell(self.n_hidden, forget_bias=1.0)
         outputs, states_t = rnn.rnn(
           lstm_cell, states, dtype=tf.float32
@@ -41,17 +39,20 @@ class DreamNetwork:
 
     return tf.add(tf.matmul(outputs[-1], weights['out']), biases['out'])
 
-  def init_network(self, x):
-    with tf.variable_scope('params', reuse=self.rnn_inited) as scope:
+  def init_network(self, x, reuse=False):
+    with tf.variable_scope('params', reuse=reuse) as scope:
       weights = {
-        'out': tf.get_variable('weights', [self.n_hidden, self.n_classes])
+        'out': tf.get_variable('weights', [self.n_hidden, self.n_classes],
+          initializer=tf.random_normal_initializer(0., 1.)
+        )
       }
       biases = {
-        'out': tf.get_variable('biases', [1, self.n_classes])
+        'out': tf.get_variable('biases', [1, self.n_classes],
+          initializer=tf.random_normal_initializer(0., 1.)
+        )
       }
 
-    pred = self.RNN(x, weights, biases)
-    self.rnn_inited = True
+    pred = self.RNN(x, weights, biases, reuse)
 
     return pred
 
@@ -91,7 +92,9 @@ class DreamNetwork:
                 "{:.6f}".format(loss) + ", Training Accuracy= " + \
                 "{:.5f}".format(acc))
         step += 1
-    print("Optimization complete!")
+      print("Optimization complete!")
+      x_z = np.zeros((1, 32, 32))
+      print(sess.run(pred, feed_dict={xs: x_z}))
    
   def dream(self, x, y, training_iters=10000, display_step=10,learning_rate=.1):
     with tf.Session() as sess:
@@ -100,7 +103,7 @@ class DreamNetwork:
       xs = tf.Variable(x, dtype=np.float32)
       ys = tf.placeholder('float32', [None, self.n_classes])
 
-      pred = self.init_network(xs)
+      pred = self.init_network(xs, reuse=True)
 
       cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(pred, ys))
       optimizer = tf.train.FtrlOptimizer(
@@ -140,7 +143,7 @@ class DreamNetwork:
       for idx in xrange(nex):
         labels[idx, y[idx]] = 1.
 
-      pred = self.init_network(xs)
+      pred = self.init_network(xs, reuse=True)
 
       correct_pred = tf.equal(tf.argmax(pred, 1), tf.argmax(ys, 1))
       accuracy = tf.reduce_mean(tf.abs(tf.cast(correct_pred, tf.float32)))
@@ -149,4 +152,8 @@ class DreamNetwork:
       sess.run(init)
 
       print("Testing Accuracy:", \
-        sess.run(accuracy, feed_dict={xs: x, ys: labels})) 
+        sess.run(accuracy, feed_dict={xs: x, ys: labels}))
+ 
+      x_z = np.zeros((1, 32, 32))
+      print(sess.run(pred, feed_dict={xs: x_z}))
+
