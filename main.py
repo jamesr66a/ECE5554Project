@@ -18,13 +18,10 @@ def main():
     dn = DreamNetwork()
 
     data, labels = load_cifar_data('cifar-10-batches-py/data_batch_1')
-    dn.train(data, labels, sess, training_iters=10000)
+    dn.train(data, labels, sess, training_iters=1000000)
 
     test_data, test_labels = load_cifar_data('cifar-10-batches-py/test_batch')
     dn.test(test_data[0:100, :], test_labels[0:100], sess)
-
-    test_data = np.zeros((1, 1024))
-    test_labels = [0]
 
     dream_img = dn.dream(
       np.expand_dims(test_data[0, :], 0), np.expand_dims(test_labels[0], 0),

@@ -37,7 +37,7 @@ class DreamNetwork:
         else:
           states = states_t
 
-        return tf.add(tf.matmul(outputs[-1], weights['out']), biases['out'])
+    return tf.add(tf.matmul(outputs[-1], weights['out']), biases['out'])
 
   def init_network(self, x, reuse=False):
     with tf.variable_scope('params', reuse=reuse) as scope:
@@ -103,8 +103,8 @@ class DreamNetwork:
 
     cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(pred, ys))
 
-    optimizer = tf.train.AdamOptimizer(
-      learning_rate=learning_rate
+    optimizer = tf.train.FtrlOptimizer(
+      learning_rate=learning_rate, l2_regularization_strength=10.0
     ).minimize(cost, var_list=[xs])
 
     correct_pred = tf.equal(tf.argmax(pred, 1), tf.argmax(ys, 1))
