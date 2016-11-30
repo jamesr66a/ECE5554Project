@@ -25,19 +25,10 @@ class DreamNetwork:
     x = tf.reshape(x, [-1, self.n_input])
     x = tf.split(0, self.n_steps, x)
 
-    states = x
-    for i in range(self.lstm_depth):
-      with tf.variable_scope('rnn{}'.format(i), reuse=reuse):
-        lstm_cell = rnn_cell.BasicLSTMCell(self.n_hidden, forget_bias=1.0)
-        outputs, states_t = rnn.rnn(
-          lstm_cell, states, dtype=tf.float32, scope='rnn{}'.format(i)
-        ) 
-
-        # Residual connection
-        if i != 0:
-          states = states_t + states
-        else:
-          states = states_t
+    with tf.variable_scope('rnn', reuse=reuse):
+      lstm = rnn_cell.BasicLSTMCell(self.n_hidden, forget_bias=1.0)
+      stacked_lstm = rnn_cell.MultiRNNCell([lstm] * self.lstm_depth)
+      outputs, state = rnn.rnn(stacked_lstm, x, dtype=tf.float32)
 
     return tf.add(tf.matmul(outputs[-1], weights['out']), biases['out'])
 
