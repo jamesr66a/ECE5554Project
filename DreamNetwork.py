@@ -50,7 +50,7 @@ class DreamNetwork:
     return pred, weights, biases
 
 
-  def train(self, x, y, sess, batch_size=100, training_iters=10000000, display_step=10, savepath=None): 
+  def train(self, x, y, sess, testx, testy, batch_size=100, training_iters=10000000, display_step=10, test_step=100, savepath=None): 
     xs = tf.placeholder('float32', [None, self.n_steps, self.n_input])
     ys = tf.placeholder('float32', [None, self.n_classes])
 
@@ -72,6 +72,12 @@ class DreamNetwork:
     init = tf.initialize_all_variables()
     sess.run(init)
 
+    testx = np.reshape(testx, (-1, self.n_steps, self.n_input))
+    nex, _, _ = testx.shape
+    testlabels = np.zeros((nex, 10))
+    for idx in xrange(nex):
+      testlabels[idx, testy[idx]] = 1.  
+
     step = 1
     while step*batch_size < training_iters:
       data_size, _ = x.shape
@@ -89,6 +95,9 @@ class DreamNetwork:
         print("Iter " + str(step*batch_size) + ", Minibatch Loss= " + \
               "{:.6f}".format(loss) + ", Training Accuracy= " + \
               "{:.5f}".format(acc))
+      if step % test_step == 0:
+        print("Testing Accuracy:", \
+          sess.run(accuracy, feed_dict={xs: testx, ys: testlabels}))
       step += 1
     print("Optimization complete!")
 
