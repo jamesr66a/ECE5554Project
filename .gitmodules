@@ -1,0 +1,3 @@
+[submodule "pixel-rnn-tensorflow"]
+	path = pixel-rnn-tensorflow
+	url = git@github.com:carpedm20/pixel-rnn-tensorflow.git
