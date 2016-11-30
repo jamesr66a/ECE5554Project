@@ -15,7 +15,7 @@ height = width = 32
 channel = 1
 
 class DreamNetwork2:
-  def __init__(self, hidden_dims=16, recurrent_length=3, out_recurrent_length=2, out_hidden_dims=32, learning_rate=1e-3, dream_learning_rate=1e-3):
+  def __init__(self, hidden_dims=16, recurrent_length=3, out_recurrent_length=2, out_hidden_dims=32, learning_rate=5e-3, dream_learning_rate=1e-3):
     self.hidden_dims = hidden_dims
     self.recurrent_length = recurrent_length
     self.out_recurrent_length = out_recurrent_length
@@ -87,7 +87,7 @@ class DreamNetwork2:
     except KeyboardInterrupt:
       pass
 
-  def dream(self, x, sess, niterations=100):
+  def dream(self, x, sess, niterations=1000):
     x = np.reshape(x, [-1, 32, 32, 1])
     inputs = tf.Variable(x, dtype=np.float32)
 
