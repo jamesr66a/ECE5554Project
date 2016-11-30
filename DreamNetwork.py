@@ -26,9 +26,10 @@ class DreamNetwork:
     x = tf.split(0, self.n_steps, x)
 
     with tf.variable_scope('rnn', reuse=reuse):
-      lstm = rnn_cell.BasicLSTMCell(self.n_hidden, forget_bias=1.0)
+      lstm = rnn_cell.BasicLSTMCell(self.n_hidden//2, forget_bias=1.0)
       stacked_lstm = rnn_cell.MultiRNNCell([lstm] * self.lstm_depth)
-      outputs, state = rnn.rnn(stacked_lstm, x, dtype=tf.float32)
+      stacked_lstm_bw = rnn_cell.MultiRNNCell([lstm] * self.lstm_depth)
+      outputs, _, _ = rnn.bidirectional_rnn(stacked_lstm, stacked_lstm_bw, x, dtype=tf.float32)
 
     return tf.add(tf.matmul(outputs[-1], weights['out']), biases['out'])
 
@@ -79,26 +80,29 @@ class DreamNetwork:
       testlabels[idx, testy[idx]] = 1.  
 
     step = 1
-    while step*batch_size < training_iters:
-      data_size, _ = x.shape
-      idxs = np.random.choice(data_size, batch_size)
-      batch_x = x[idxs, :]
-      ls = y[idxs]
-      batch_y = np.zeros((batch_size, self.n_classes))
-      for idx in xrange(batch_size):
-        batch_y[idx, ls[idx]] = 1.
-      batch_x = batch_x.reshape((batch_size, self.n_steps, self.n_input))
-      sess.run(optimizer, feed_dict={xs: batch_x, ys: batch_y})
-      if step % display_step == 0:
-        acc = sess.run(accuracy, feed_dict={xs: batch_x, ys: batch_y})
-        loss = sess.run(cost, feed_dict={xs: batch_x, ys: batch_y})
-        print("Iter " + str(step*batch_size) + ", Minibatch Loss= " + \
-              "{:.6f}".format(loss) + ", Training Accuracy= " + \
-              "{:.5f}".format(acc))
-      if step % test_step == 0:
-        print("Testing Accuracy:", \
-          sess.run(accuracy, feed_dict={xs: testx, ys: testlabels}))
-      step += 1
+    try:
+      while step*batch_size < training_iters:
+        data_size, _ = x.shape
+        idxs = np.random.choice(data_size, batch_size)
+        batch_x = x[idxs, :]
+        ls = y[idxs]
+        batch_y = np.zeros((batch_size, self.n_classes))
+        for idx in xrange(batch_size):
+          batch_y[idx, ls[idx]] = 1.
+        batch_x = batch_x.reshape((batch_size, self.n_steps, self.n_input))
+        sess.run(optimizer, feed_dict={xs: batch_x, ys: batch_y})
+        if step % display_step == 0:
+          acc = sess.run(accuracy, feed_dict={xs: batch_x, ys: batch_y})
+          loss = sess.run(cost, feed_dict={xs: batch_x, ys: batch_y})
+          print("Iter " + str(step*batch_size) + ", Minibatch Loss= " + \
+                "{:.6f}".format(loss) + ", Training Accuracy= " + \
+                "{:.5f}".format(acc))
+        if step % test_step == 0:
+          print("Testing Accuracy:", \
+            sess.run(accuracy, feed_dict={xs: testx, ys: testlabels}))
+        step += 1
+    except KeyboardInterrupt:
+      pass
     print("Optimization complete!")
 
     saver = tf.train.Saver()
