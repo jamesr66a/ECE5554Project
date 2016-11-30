@@ -109,7 +109,7 @@ class DreamNetwork:
     saver.save(sess, savepath)
     print("Model saved to {}".format(savepath))
  
-  def dream(self, x, y, sess, training_iters=1000, display_step=1,learning_rate=.1):
+  def dream(self, x, y, sess, training_iters=500, display_step=10,learning_rate=.1):
     x = np.reshape(x, (-1, self.n_steps, self.n_input))
     xs = tf.Variable(x, dtype=np.float32)
     ys = tf.placeholder('float32', [None, self.n_classes])
@@ -118,9 +118,11 @@ class DreamNetwork:
 
     cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(pred, ys))
 
-    optimizer = tf.train.GradientDescentOptimizer(
-      learning_rate=learning_rate
-    ).minimize(cost, var_list=[xs])
+    global_step = tf.Variable(0, trainable=False)
+    lr = tf.train.exponential_decay(learning_rate, global_step, 1000, 0.5)
+    optimizer = tf.train.AdamOptimizer(
+      learning_rate=lr
+    ).minimize(cost, var_list=[xs], global_step=global_step)
 
     correct_pred = tf.equal(tf.argmax(pred, 1), tf.argmax(ys, 1))
     accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
@@ -130,22 +132,32 @@ class DreamNetwork:
       if not sess.run(tf.is_variable_initialized(var)):
         to_init.append(var)
 
+    sm = tf.nn.softmax(pred)
+
     sess.run(tf.initialize_variables(to_init))
 
     step = 1
-    while step < training_iters:
+    while True:
       nex, _, _ = x.shape
       batch_y = np.zeros((nex, 10))
       for idx in xrange(nex):
         batch_y[idx, y[idx]] = 1.
       sess.run(optimizer, feed_dict={ys: batch_y})
+      p = sess.run(sm, feed_dict={ys: batch_y})
       if step % display_step == 0:
         acc = sess.run(accuracy, feed_dict={ys: batch_y})
         loss = sess.run(cost, feed_dict={ys: batch_y})
         print("Iter " + str(step) + ", Minibatch Loss= " + \
               "{:.6f}".format(loss) + ", Training Accuracy= " + \
               "{:.5f}".format(acc))
+        print(p)
       step += 1
+      b = True
+      for i in xrange(nex):
+        if p[i, y[i]] < 0.95:
+          b = False
+      if b:
+        break
     print("Optimization complete!")
 
     return sess.run(xs) 

@@ -15,13 +15,13 @@ def load_cifar_data(path):
 
 def main():
   with tf.Session() as sess:
-    dn = DreamNetwork()
+    dn = DreamNetwork(lstm_depth=3, n_hidden=64)
 
     savepath = "./model.ckpt"
     data, labels = load_cifar_data('cifar-10-batches-py/data_batch_1')
-    dn.train(data, labels, sess, training_iters=1000000, savepath=savepath)
-
     test_data, test_labels = load_cifar_data('cifar-10-batches-py/test_batch')
+    dn.train(data, labels, sess, test_data, test_labels, training_iters=500000, savepath=savepath)
+
     dn.test(test_data, test_labels, sess)
 
     scipy.misc.imsave(
@@ -30,13 +30,14 @@ def main():
     )
 
     dream_img = dn.dream(
-      np.expand_dims(test_data[0, :], 0), [0],
-      sess, learning_rate=5e3, training_iters=100
+      np.tile(np.zeros((32, 32)), 10), xrange(10),
+      sess, learning_rate=1.0, training_iters=100, display_step=1
     ) 
 
-    scipy.misc.imsave(
-      'dream.jpg', np.squeeze(dream_img).repeat(2, axis=0).repeat(2, axis=1)
-    )
+    for idx in xrange(10):
+      scipy.misc.imsave(
+        'dream{}.bmp'.format(idx), np.squeeze(dream_img)[idx,:,:].repeat(8, axis=0).repeat(8, axis=1)
+      )
 
 
 if __name__ == '__main__':
