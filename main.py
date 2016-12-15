@@ -1,4 +1,4 @@
-from DreamNetwork2 import DreamNetwork2
+from DreamNetwork import DreamNetwork2
 import numpy as np
 import scipy.misc
 from tensorflow.models.image.cifar10 import cifar10
